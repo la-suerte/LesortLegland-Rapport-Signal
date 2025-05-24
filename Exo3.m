@@ -1,3 +1,22 @@
+%%Exercice 1
+%    ______  _____ _____ _  __      __  
+%   |  ____|/ ____|_   _| | \ \    / /  
+%   | |__  | (___   | | | |  \ \  / /  
+%   |  __|  \___ \  | | | |   \ \/ /    
+%   | |____ ____) |_| | | |____\  /  
+%   |______|_____/|_____|______|\/      
+%                                      
+%   E N G I N E E R I N G   S C H O O L
+%   D E   V I N C I   P A R I S        
+%
+% Copyright (c) 2025. All rights reserved.
+%
+% Subject   : Signal Processing
+% Project   : TP Matlab
+% Author(s) : François-Louis Legland & Antoine G. Lesort
+% Team      : J
+% Date      : 14/05/2025
+
 %% Exo - Filtrage Audio avec Filtres IIR
 % Objectif: Éliminer les bruits parasites d'un enregistrement musical
 % Méthode: Application de filtres coupe-bande en cascade
