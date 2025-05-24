@@ -1,89 +1,120 @@
-%%EX2
-%% Filtrage d'un bruit aigu dans un signal audio
-% Ce script analyse un fichier audio pour identifier et
-% supprimer des bruits aigus indésirables
-% Nettoyage de l'environnement
-clc; clear; close all;
-% 1. Chargement des données
-[melodie_signal, freq_echant] = audioread('Mozart_Bruit.wav');
-info_audio = audioinfo('Mozart_Bruit.wav');
-% Paramètres
-duree_totale = length(melodie_signal) / freq_echant;
-nb_bits = info_audio.BitsPerSample;
-nb_echant = length(melodie_signal);
-axe_temps = (0:nb_echant-1) / freq_echant;
-% Affichage des caractéristiques
-fprintf('Période d''échantillonnage: %.6f secondes\n', 1/freq_echant);
-fprintf('Fréquence d''échantillonnage: %d Hz\n', freq_echant);
-fprintf('Nombre de bits pour le codage: %d bits\n', nb_bits);
-fprintf('Durée totale du signal: %.2f secondes\n', duree_totale);
-% Écouter le son (décommenter pour écouter)
-% sound(melodie_signal, freq_echant);
-% Calcul de la transformée de Fourier
-transformee_fourier = fft(melodie_signal);
-spectre_ampli = abs(transformee_fourier/nb_echant);
-spectre_ampli_mono = spectre_ampli(1:floor(nb_echant/2)+1);
-spectre_ampli_mono(2:end-1) = 2*spectre_ampli_mono(2:end-1);
-% Vecteur de fréquence pour l'affichage
-resolution_freq = freq_echant/nb_echant;
-axe_freq = 0:resolution_freq:freq_echant/2;
-% Conversion en dB et limiter pour éviter log(0)
-epsilon = 1e-10;
-spectre_db = 20*log10(spectre_ampli_mono + epsilon);
-% Figure 1: Représentation temporelle et fréquentielle
-figure;
-subplot(2,1,1);
-plot(axe_temps, melodie_signal, 'b', 'LineWidth', 0.5);
-xlabel('Temps (s)');
-ylabel('Amplitude');
-title('Représentation temporelle du signal');
-grid on;
-% Représentation fréquentielle
-subplot(2,1,2);
-plot(axe_freq, spectre_db, 'r', 'LineWidth', 1);
-xlabel('Fréquence (Hz)');
-ylabel('Amplitude (dB)');
-title('Spectre d''amplitude en dB');
-grid on;
-xlim([0 freq_echant/2]);
-% Détermination des fréquences indésirables
-[valeurs_pics, positions_pics] = findpeaks(spectre_db, 'MinPeakHeight', max(spectre_db)-20, 'MinPeakDistance', 500);
-freq_pics = axe_freq(positions_pics);
-% Figure 2: Identification des fréquences indésirables
-figure;
-plot(axe_freq, spectre_db, 'b', 'LineWidth', 1);
+%% TP Traitement du Signal EEG - Filtrage par moyenne mobile
+% Auteur: Étudiant 
+% Date: Mai 2025
+% Objectif: Appliquer un filtre à moyenne mobile sur des données EEG brutes
+
+% Nettoyage de l'espace de travail
+clear all; clc; close all;
+
+%% Étape 1: Importation des données EEG
+% Chargement du fichier contenant les mesures EEG
+donnees_brutes = load('EEGDatabrut.mat');
+signal_eeg = donnees_brutes.EEGDatabrut;
+
+% Vérification de la taille du signal
+fprintf('Nombre d''échantillons chargés: %d\n', length(signal_eeg));
+
+%% Étape 2: Configuration des paramètres de traitement
+freq_sampling = 100;                    % Fréquence d'échantillonnage (Hz)
+taille_signal = length(signal_eeg);     % Nombre total d'échantillons
+vecteur_temps = (0:taille_signal-1)/freq_sampling;  % Axe temporel en secondes
+
+% Affichage des caractéristiques du signal
+fprintf('Durée totale du signal: %.2f secondes\n', vecteur_temps(end));
+fprintf('Résolution temporelle: %.4f secondes\n', 1/freq_sampling);
+
+%% Étape 3: Implémentation du filtre à moyenne mobile (méthode manuelle)
+% Création du vecteur de sortie initialisé à zéro
+signal_filtre = zeros(size(signal_eeg));
+
+% Traitement des premiers échantillons (conditions initiales)
+% Pour n=1: y[1] = x[1] (pas d'échantillons précédents)
+signal_filtre(1) = signal_eeg(1);
+
+% Pour n=2: y[2] = (x[2] + x[1])/2
+signal_filtre(2) = mean(signal_eeg(1:2));
+
+% Pour n=3: y[3] = (x[3] + x[2] + x[1])/3
+signal_filtre(3) = mean(signal_eeg(1:3));
+
+% Pour n=4: y[4] = (x[4] + x[3] + x[2] + x[1])/4
+signal_filtre(4) = mean(signal_eeg(1:4));
+
+% Pour n=5: y[5] = (x[5] + x[4] + x[3] + x[2] + x[1])/5
+signal_filtre(5) = mean(signal_eeg(1:5));
+
+% Application de la formule du filtre à moyenne mobile pour n >= 6
+% Équation: y[n] = (1/5) * somme(x[n-k]) pour k=0 à 4
+ordre_filtre = 5;  % Nombre d'échantillons pour la moyenne
+for indice = ordre_filtre+1:taille_signal
+    % Calcul de la moyenne mobile sur 5 échantillons
+    somme_echantillons = 0;
+    for k = 0:ordre_filtre-1
+        somme_echantillons = somme_echantillons + signal_eeg(indice-k);
+    end
+    signal_filtre(indice) = somme_echantillons / ordre_filtre;
+end
+
+fprintf('Filtrage terminé!\n');
+
+%% Étape 4: Visualisation comparative des signaux
+% Graphique 1: Vue d'ensemble sur toute la durée
+figure('Name', 'Comparaison signal brut vs filtré');
+plot(vecteur_temps, signal_eeg, 'Color', [0 0.4 0.8], 'LineWidth', 0.8);
 hold on;
-plot(freq_pics, valeurs_pics, 'ro', 'MarkerSize', 10);
-title('Spectre avec identification des fréquences indésirables');
-xlabel('Fréquence (Hz)');
-ylabel('Amplitude (dB)');
+plot(vecteur_temps, signal_filtre, 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+xlabel('Temps (secondes)');
+ylabel('Amplitude du signal EEG');
+title('Comparaison entre signal EEG original et signal filtré');
+legend('Signal EEG brut', 'Signal après filtrage', 'Location', 'best');
 grid on;
-xlim([0 freq_echant/2]);
-legend('Spectre', 'Pics détectés');
-% Affichage des valeurs des fréquences indésirables détectées
-fprintf('Fréquences indésirables détectées :\n');
-for indice = 1:length(freq_pics)
-fprintf('Pic %d: %.2f Hz\n', indice, freq_pics(indice));
-end
-% Spectre avec fftshift pour visualisation [-fe/2, fe/2]
-spectre_complet = abs(fftshift(transformee_fourier))/nb_echant;
-spectre_complet_db = 20*log10(spectre_complet + epsilon);
-% Axe des fréquences centré
-axe_freq_centre = linspace(-freq_echant/2, freq_echant/2, nb_echant);
-% Figure 3: Représentation du spectre centré
-figure;
-plot(axe_freq_centre, spectre_complet_db, 'g', 'LineWidth', 1);
-title('Spectre d''amplitude en dB sur [-f_e/2, f_e/2]');
-xlabel('Fréquence (Hz)');
-ylabel('Amplitude (dB)');
+set(gca, 'GridAlpha', 0.3);
+
+% Graphique 2: Zoom sur les 2 premières secondes pour analyse détaillée
+figure('Name', 'Analyse détaillée - 2 premières secondes');
+plot(vecteur_temps, signal_eeg, 'Color', [0 0.6 0.9], 'LineWidth', 0.7);
+hold on;
+plot(vecteur_temps, signal_filtre, 'Color', [0.9 0.1 0.1], 'LineWidth', 2.2);
+xlabel('Temps (secondes)');
+ylabel('Amplitude');
+title('Effet du filtrage sur les 2 premières secondes du signal EEG');
+legend('EEG original', 'EEG filtré (moyenne mobile)', 'Location', 'northeast');
 grid on;
-xlim([-freq_echant/2 freq_echant/2]);
-% Détermination des fréquences indésirables dans l'intervalle [0, fe/2]
-[valeurs_pics_centre, positions_pics_centre] = findpeaks(spectre_complet_db(floor(nb_echant/2):end), 'MinPeakHeight', max(spectre_complet_db)-30, 'MinPeakDistance', 500);
-freq_pics_centre = axe_freq_centre(positions_pics_centre + floor(nb_echant/2) - 1);
-% Filtrer pour n'afficher que les fréquences entre 0 et fe/2
-freq_pics_positives = freq_pics_centre(freq_pics_centre > 0 & freq_pics_centre < freq_echant/2);
-fprintf('\nFréquences indésirables entre 0 et fe/2 :\n');
-for indice = 1:length(freq_pics_positives)
-fprintf('Pic %d: %.2f Hz\n', indice, freq_pics_positives(indice));
-end
+xlim([0 2]);  % Limitation de l'affichage aux 2 premières secondes
+set(gca, 'GridAlpha', 0.4);
+
+%% Étape 5: Analyse spectrale du signal original
+% Calcul de la transformée de Fourier discrète
+nb_points = length(signal_eeg);
+spectre_complexe = fft(signal_eeg);
+
+% Calcul du spectre d'amplitude normalisé
+spectre_amplitude = abs(spectre_complexe/nb_points);
+
+% Extraction de la partie positive du spectre (0 à fe/2)
+moitie_spectre = spectre_amplitude(1:floor(nb_points/2)+1);
+
+% Correction pour les fréquences non-DC et non-Nyquist
+moitie_spectre(2:end-1) = 2 * moitie_spectre(2:end-1);
+
+% Création du vecteur de fréquences correspondant
+step_freq = freq_sampling / nb_points;
+axe_frequences = 0:step_freq:freq_sampling/2;
+
+% Affichage du spectre fréquentiel
+figure('Name', 'Analyse spectrale du signal EEG');
+plot(axe_frequences, moitie_spectre, 'Color', [0.2 0.7 0.3], 'LineWidth', 1.5);
+title('Spectre de fréquence du signal EEG brut');
+xlabel('Fréquence (Hz)');
+ylabel('Magnitude du spectre');
+grid on;
+xlim([0 50]);  % Affichage jusqu'à 50 Hz (fréquences physiologiques)
+set(gca, 'GridAlpha', 0.3);
+
+% Affichage de statistiques sur le signal
+fprintf('\n=== STATISTIQUES DU TRAITEMENT ===\n');
+fprintf('Valeur moyenne du signal original: %.4f\n', mean(signal_eeg));
+fprintf('Valeur moyenne du signal filtré: %.4f\n', mean(signal_filtre));
+fprintf('Écart-type du signal original: %.4f\n', std(signal_eeg));
+fprintf('Écart-type du signal filtré: %.4f\n', std(signal_filtre));
+fprintf('Réduction du bruit: %.2f%%\n', (1-std(signal_filtre)/std(signal_eeg))*100);
